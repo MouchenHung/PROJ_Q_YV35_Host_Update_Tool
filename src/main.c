@@ -1,621 +1,17 @@
-#include <ctype.h>
-#include <dirent.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <time.h>
-#include <stdarg.h>
-#include <sys/file.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
 
-#include <freeipmi/api/ipmi-api.h>
-#include <freeipmi/driver/ipmi-openipmi-driver.h>
-#include "ipmi-api-defs.h"
-
-/* Project config */
-#define PROJ_NAME "FW UPDATE TOOL"
-#define PROJ_DESCRIPTION "Firmware update tool from host, including [BIC]."
-#define PROJ_VERSION "v1.0.5"
-#define PROJ_DATE "2022.04.18" // release date
-#define PROJ_LOG_FILE "./log.txt"
-#define MAX_DBG_LOG 3
-int DEBUG_LOG = 0;
-const char* plock_file_path = "/var/run/HOST_FW_updating";
-
-/* Firware update size relative config */
-#define MAX_IMG_LENGTH 0x80000
-#define MAX_IPMB_SIZE 244
-#define MAX_IPMB_DATA_SIZE 224
-#define SECTOR_SZ_64K 0x10000
-
-/* Firware update command relative config(using ipmi-raw) */
-#define FW_UPDATE_NETFN 0x38
-#define FW_UPDATE_CMD 0x09
-#define FW_UPDATE_LUN 0x00
-#define PREFIX_IPMI_RAW "./ipmi-raw"
-#define IPMI_RAW_RETRY 2
-/*
-    IPMI 2.0 Payload is 2 bytes, so we'll assume that size * 2 for good measure.
-    This is from the ipmi-raw head file.
-*/
-#define IPMI_RAW_MAX_ARGS (65536*2)
-
-/* QUANTA oem command relative config */
-#define OEM_38 0x38
-#define OEM_36 0x36
-#define IANA_1 0x9C
-#define IANA_2 0x9C
-#define IANA_3 0x00
-
-/* IPMI CC(from yv3.5) */
-enum {
-    CC_SUCCESS = 0x00,
-    CC_INVALID_PARAM = 0x80,
-    CC_FRU_DEV_BUSY = 0x81,
-    CC_BRIDGE_MSG_ERR = 0x82,
-    CC_I2C_BUS_ERROR = 0x83,
-    CC_INVALID_IANA = 0x84,
-    CC_NODE_BUSY = 0xC0,
-    CC_INVALID_CMD = 0xC1,
-    CC_INVALID_LUN = 0xC2,
-    CC_TIMEOUT = 0xC3,
-    CC_OUT_OF_SPACE = 0xC4,
-    CC_INVALID_RESERVATION = 0xC5,
-    CC_DATA_TRUNCATED = 0xC6,
-    CC_INVALID_LENGTH = 0xC7,
-    CC_LENGTH_EXCEEDED = 0xC8,
-    CC_PARAM_OUT_OF_RANGE = 0xC9,
-    CC_SENSOR_NOT_PRESENT = 0xCB,
-    CC_INVALID_DATA_FIELD = 0xCC,
-    CC_CAN_NOT_RESPOND = 0xCE,
-    CC_NOT_SUPP_IN_CURR_STATE = 0xD5,
-    CC_UNSPECIFIED_ERROR = 0xFF,
-};
-
-typedef enum fw_type {
-    FW_T_BIC,
-    FW_T_MAX_IDX
-} fw_type_t;
-
-char *IMG_TYPE_LST[FW_T_MAX_IDX] = {"BIC"};
-
-typedef struct fw_update_data {
-    uint8_t target;
-    uint8_t offset[4];
-    uint8_t length[2];
-    uint8_t data[MAX_IPMB_DATA_SIZE];
-} fw_update_data_t;
-
-typedef struct ipmi_cmd {
-    uint8_t netfn; /* include LUN */
-    uint8_t cmd;
-    uint8_t data[MAX_IPMB_SIZE];
-    uint32_t data_len;
-} ipmi_cmd_t;
-
-typedef enum
-{
-    LOG_INF = 0x01,
-    LOG_DBG = 0x02,
-    LOG_WRN = 0x04,
-    LOG_ERR = 0x08,
-    LOG_NON = 0xff
-} LOG_TAG;
-
-/* Function declare */
-static void log_print(LOG_TAG level, const char *va_alist, ...);
-static void datetime_get(char *psDateTime);
-static void log_record(char *file_path, char *content, int init_flag);
-static uint32_t read_binary(const char *bin_path, uint8_t *buff, uint32_t buff_len);
-static int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg);
-static int do_bic_update(uint8_t *buff, uint32_t buff_len);
-static int fw_update(fw_type_t flag, uint8_t *buff, uint32_t buff_len, int max_retry);
-static int init_process_lock_file(void);
-static int lock_plock_file(int fd);
-static int unlock_plock_file(int fd);
-
-/*
-  - Name: log_print
-  - Description: Print message with header
-  - Input:
-      * level: Level of message
-      * va_alist: Format of message
-      * ...: Add args if needed in format
-  - Return:
-      * none
-*/
-static void log_print(LOG_TAG level, const char *va_alist, ...)
-{
-    if (!va_alist)
-        return;
-
-    va_list ap;
-    switch (level)
-    {
-    case LOG_INF:
-        printf("<system> ");
-        break;
-    case LOG_DBG:
-        printf("<debug>  ");
-        break;
-    case LOG_WRN:
-        printf("<warn>   ");
-        break;
-    case LOG_ERR:
-        printf("<error>  ");
-        break;
-    default:
-        break;
-    }
-    va_start(ap, va_alist);
-    vfprintf(stdout, va_alist, ap);
-    va_end(ap);
-    return;
-}
-
-/*
-  - Name: datetime_get
-  - Description: Get current timestamp
-  - Input:
-      * psDateTime: Buffer to read back time string, ex:"2022-04-07 15:43:40"
-  - Return:
-      * none
-*/
-static void datetime_get(char *psDateTime)
-{
-    if (!psDateTime) {
-        log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
-        return;
-    }
-
-    time_t nSeconds;
-    struct tm *pTM = NULL;
-
-    time(&nSeconds);
-    pTM = localtime(&nSeconds);
-
-    sprintf(psDateTime, "%04d-%02d-%02d %02d:%02d:%02d",
-            pTM->tm_year + 1900, pTM->tm_mon + 1, pTM->tm_mday,
-            pTM->tm_hour, pTM->tm_min, pTM->tm_sec);
-}
-
-/*
-  - Name: log_record
-  - Description: Record log to file
-  - Input:
-      * file_path: ipmi-raw session
-      * content: IPMI package
-      * init_flag: 0 if append, 1 if create/rewrite
-  - Return:
-      * none
-*/
-static void log_record(char *file_path, char *content, int init_flag)
-{
-    if (!file_path || !content) {
-        log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
-        return;
-    }
-
-    uint32_t content_size = 0;
-    char *tmp = content;
-    while(*tmp) {
-        content_size++;
-        tmp++;
-    }
-
-    FILE *ptr;
-    if (init_flag)
-        ptr = fopen(file_path, "w");
-    else
-        ptr = fopen(file_path, "a");
-
-    if (!ptr) {
-        log_print(LOG_ERR, "%s: Invalid log file path [%s]\n", __func__, file_path);
-        return;
-    }
-
-    log_print(LOG_NON, "%s\n", content);
-
-    char cur_time[22];
-    datetime_get(cur_time);
-
-    char output[content_size+22];
-    sprintf(output, "[%s] %s", cur_time, content);
-
-    fwrite(output, 1, sizeof(output), ptr);
-
-    fclose(ptr);
-
-    return;
-}
-
-/*
-  - Name: read_binary
-  - Description: Read binary file to buffer
-  - Input:
-      * bin_path: Binary file path
-      * buff: Buffer to read back image bytes
-      * buff_len: Buffer length
-  - Return:
-      * Binary file size, if no error
-      * 0, if error
-*/
-static uint32_t read_binary(const char *bin_path, uint8_t *buff, uint32_t buff_len)
-{
-    if (!buff || !bin_path) {
-        log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
-        return 0;
-    }
-
-    FILE *ptr;
-    uint32_t bin_size = 0;
-
-    ptr = fopen(bin_path,"rb");
-    if (!ptr) {
-        log_print(LOG_ERR, "%s: Invalid bin file path [%s]\n", __func__, bin_path);
-        return 0;
-    }
-
-    fseek(ptr, 0, SEEK_END);
-    bin_size = ftell(ptr);
-    fseek(ptr, 0, SEEK_SET);
-
-    if (bin_size > buff_len) {
-        log_print(LOG_ERR, "%s: Given buffer length (0x%x) smaller than Image length (0x%x)\n",
-            __func__, buff_len, bin_size);
-        bin_size = 0;
-        goto ending;
-    }
-
-    fread(buff, buff_len, 1, ptr);
-
-    if (DEBUG_LOG >= 1)
-        log_print(LOG_INF, "Image size: 0x%x\n", bin_size);
-
-ending:
-    fclose(ptr);
-    return bin_size;
-}
-
-/*
-  - Name: send_recv_command
-  - Description: Send and receive message of ipmi-raw
-  - Input:
-      * ipmi_ctx: ipmi-raw session
-      * msg: IPMI package
-  - Return:
-      * Completion code, if no error
-      * -1, if error
-*/
-static int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg)
-{
-    int ret = -1;
-    int ipmi_data_len = msg->data_len;
-    if (!ipmi_ctx || !msg) {
-        log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
-        return -1;
-    }
-
-    if (DEBUG_LOG >= 2) {
-        log_print(LOG_NON, "         * ipmi command     : 0x%x/0x%x\n", msg->netfn, msg->cmd);
-        log_print(LOG_NON, "         * ipmi data length : %d\n", msg->data_len);
-        log_print(LOG_NON, "         * ipmi data        : ");
-
-        int max_data_print = msg->data_len;
-
-        if (DEBUG_LOG == 2) {
-            /* IPMI data max print limit is 10 */
-            if (msg->data_len > 10)
-                max_data_print = 10;
-        }
-
-        for (int i=0; i<max_data_print; i++)
-            log_print(LOG_NON, "0x%x ", msg->data[i]);
-        if (DEBUG_LOG == 2)
-            log_print(LOG_NON, "...");
-        log_print(LOG_NON, "\n");
-    }
-
-    int oem_flag = 0;
-
-    if ( (msg->netfn >> 2) == OEM_36 || (msg->netfn >> 2) == OEM_38) {
-        ipmi_data_len += 3;
-        if (ipmi_data_len > MAX_IPMB_SIZE)
-            return -1;
-        oem_flag = 1;
-    }
-
-    uint8_t *ipmi_data;
-    int init_idx = 0;
-    ipmi_data = (uint8_t*)malloc(++ipmi_data_len); // Insert one byte from the head.
-    if (!ipmi_data) {
-        log_print(LOG_ERR, "%s: ipmi_data malloc failed!\n", __func__);
-        return -1;
-    }
-    ipmi_data[0] = msg->cmd; // The byte #0 is cmd.
-    init_idx++;
-    if (oem_flag) {
-        ipmi_data[1] = IANA_1;
-        ipmi_data[2] = IANA_2;
-        ipmi_data[3] = IANA_3;
-        init_idx += 3;
-    }
-    memcpy(&ipmi_data[4], msg->data, msg->data_len);
-
-    int rs_len = 0;
-    uint8_t *bytes_rs = NULL;
-    if (!(bytes_rs = calloc (IPMI_RAW_MAX_ARGS, sizeof (uint8_t)))) {
-        log_print(LOG_ERR, "%s: bytes_rs calloc failed!\n", __func__);
-        goto ending;
-    }
-
-    rs_len = ipmi_cmd_raw (
-        ipmi_ctx,
-        msg->netfn & 0x03,
-        msg->netfn >> 2,
-        ipmi_data, //byte #0 = cmd
-        ipmi_data_len, // Add 1 because the cmd is combined with the data buf.
-        bytes_rs,
-        IPMI_RAW_MAX_ARGS
-    );
-
-    ret = bytes_rs[1];
-
-    /* Check for ipmi-raw command response */
-    if (bytes_rs[0] != msg->cmd || bytes_rs[1] != CC_SUCCESS) {
-        log_print(LOG_ERR, "%s: ipmi-raw received bad cc 0x%x\n", __func__, bytes_rs[1]);
-        goto ending;
-    }
-
-    /* Check for oem iana */
-    if (oem_flag) {
-        if (bytes_rs[2]!=IANA_1 || bytes_rs[3]!=IANA_2 || bytes_rs[4]!=IANA_3) {
-            log_print(LOG_ERR, "%s: ipmi-raw received invalid IANA\n", __func__);
-            ret = -1;
-            goto ending;
-        }
-    }
-
-ending:
-    if (ipmi_data)
-        free(ipmi_data);
-    if (bytes_rs)
-        free(bytes_rs);
-
-    return ret;
-}
-
-/*
-  - Name: do_bic_update
-  - Description: BIC update process
-  - Input:
-      * buff: Buffer to store image bytes
-      * buff_len: Buffer length
-  - Return:
-      * 0, if no error
-      * 1, if error
-*/
-static int do_bic_update(uint8_t *buff, uint32_t buff_len)
-{
-    int ret = 1;
-
-    if (!buff) {
-        log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
-        return 1;
-    }
-
-    ipmi_ctx_t ipmi_ctx = ipmi_ctx_create();
-    if (ipmi_ctx == NULL) {
-        log_print(LOG_ERR, "%s: ipmi_ctx_create error\n", __func__);
-        return 1;
-    }
-
-    ipmi_ctx->type = IPMI_DEVICE_OPENIPMI;
-    if (!(ipmi_ctx->io.inband.openipmi_ctx = ipmi_openipmi_ctx_create ())) {
-        log_print(LOG_ERR, "%s: !(ipmi_ctx->io.inband.openipmi_ctx = ipmi_openipmi_ctx_create ())\n", __func__);
-        goto clean;
-    }
-
-    if (ipmi_openipmi_ctx_io_init (ipmi_ctx->io.inband.openipmi_ctx) < 0) {
-        log_print(LOG_ERR, "%s: ipmi_openipmi_ctx_io_init (ctx->io.inband.openipmi_ctx) < 0\n", __func__);
-        goto clean;
-    }
-
-    uint32_t cur_msg_offset = 0;
-    uint8_t *cur_buff = buff;
-    uint8_t last_cmd_flag = 0;
-    uint32_t section_offset = 0;
-    uint16_t section_idx = 0;
-    uint8_t percent;
-
-    uint16_t msg_len;
-    if (buff_len > MAX_IPMB_DATA_SIZE) {
-        msg_len = MAX_IPMB_DATA_SIZE;
-    } else {
-        msg_len = buff_len;
-        last_cmd_flag = 1;
-    }
-
-    while(cur_msg_offset < buff_len) {
-        if (section_offset == SECTOR_SZ_64K) {
-            section_offset = 0;
-            section_idx++;
-        }
-
-        /* If current size over 64K */
-        if ( (section_offset + MAX_IPMB_DATA_SIZE) / SECTOR_SZ_64K )
-            msg_len = (SECTOR_SZ_64K - section_offset);
-        else
-            msg_len = MAX_IPMB_DATA_SIZE;
-
-        /* If next msg offset over given img length */
-        if ( (cur_msg_offset + msg_len) >= buff_len) {
-            msg_len = (buff_len - cur_msg_offset);
-            last_cmd_flag = 1;
-        }
-
-        fw_update_data_t cmd_data;
-        memset(&cmd_data, 0, sizeof(cmd_data));
-        if (last_cmd_flag)
-            cmd_data.target = 0x82;
-        else
-            cmd_data.target = 0x02;
-        cmd_data.offset[0] = (cur_msg_offset & 0xFF);
-        cmd_data.offset[1] = (cur_msg_offset >> 8) & 0xFF;
-        cmd_data.offset[2] = (cur_msg_offset >> 16) & 0xFF;
-        cmd_data.offset[3] = (cur_msg_offset >> 24) & 0xFF;
-        cmd_data.length[0] = msg_len & 0xFF;
-        cmd_data.length[1] = (msg_len >> 8) & 0xFF;
-        memcpy(cmd_data.data, cur_buff, msg_len);
-
-        if ( percent != (cur_msg_offset+msg_len)*100/buff_len ) {
-            percent = (cur_msg_offset+msg_len)*100/buff_len;
-            if (!(percent % 5))
-                log_print(LOG_NON, "         update status %d%%\n", percent);
-        }
-
-        ipmi_cmd_t msg_out;
-        memset(&msg_out, 0, sizeof(msg_out));
-        msg_out.netfn = FW_UPDATE_NETFN << 2;
-        msg_out.cmd = FW_UPDATE_CMD;
-        msg_out.data_len = msg_len+7;
-        memcpy(msg_out.data, &cmd_data, msg_len+7);
-
-        if (DEBUG_LOG >= 1) {
-            log_print(LOG_DBG, "section_idx[%d] section_offset[0x%x/0x%x] image_offset[0x%x]\n",
-                section_idx, section_offset, SECTOR_SZ_64K, cur_msg_offset);
-            log_print(LOG_NON, "         target[0x%x] offset[0x%x] size[%d]\n",
-                msg_out.data[0],
-                msg_out.data[1]|(msg_out.data[2] << 8)|(msg_out.data[3] << 16)|(msg_out.data[4] << 24),
-                msg_out.data[5]|(msg_out.data[6] << 8));
-        }
-
-        int resp_cc = send_recv_command(ipmi_ctx, &msg_out);
-        if (resp_cc) {
-            /* to handle unexpected user interrupt-behavior last time */
-            if (resp_cc == CC_INVALID_DATA_FIELD) {
-                log_print(LOG_WRN, "Given update offset not mach with previous record!\n");
-                log_print(LOG_NON, "         Retry in few seconds...\n");
-            }
-            goto clean;
-        }
-
-        cur_msg_offset += msg_len;
-        cur_buff += msg_len;
-        section_offset += msg_len;
-    }
-    ret = 0;
-
-clean:
-    ipmi_ctx_close (ipmi_ctx);
-    ipmi_ctx_destroy (ipmi_ctx);
-    return ret;
-}
-
-/*
-  - Name: fw_update
-  - Description: Firmware update controller
-  - Input:
-      * flag: Image type flag
-      * buff: Buffer to store image bytes
-      * buff_len: Buffer length
-      * max_retry: Maximum retry time
-  - Return:
-      * 0, if no error
-      * 1, if error
-*/
-static int fw_update(fw_type_t flag, uint8_t *buff, uint32_t buff_len, int max_retry)
-{
-    if (!buff) {
-        log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
-        return 1;
-    }
-
-    int ret = 1;
-    int retry = 0;
-
-    while (retry <= max_retry) {
-        if (retry)
-            log_print(LOG_INF, "FW update retry %d/%d ...\n", retry, max_retry);
-
-        switch(flag)
-        {
-        case FW_T_BIC:
-            if (do_bic_update(buff, buff_len) == 0)
-                ret = 0;
-            break;
-
-        default:
-            log_print(LOG_ERR, "%s: No such flag!\n", __func__);
-            break;
-        }
-
-        if (!ret)
-            break;
-
-        retry++;
-    }
-
-    return ret;
-}
-
-/*
-  - Name: init_process_lock_file
-  - Description: Create the plock, a file for checking BIC FW updating.
-  - Input:
-      * N/A
-  - Return:
-      * a file descriptor of the checking file, if no error
-      * -1, if error
-*/
-static int init_process_lock_file(void)
-{
-    return open(plock_file_path, O_RDONLY | O_CREAT);
-}
-
-/*
-  - Name: lock_plock_file
-  - Description: Lock the plock_file.
-  - Input:
-      * fd: The file descriptor of plock.
-  - Return:
-      * 0, if the plock file is locked by this process.
-      * -1, if the plock file is locked by the other process.
-*/
-static int lock_plock_file(int fd)
-{
-    if (fd <= 0)
-    {
-        return -1;
-    }
-
-    return flock(fd, LOCK_EX | LOCK_NB);
-}
-
-/*
-  - Name: unlock_plock_file
-  - Description: Unlock the plock_file.
-  - Input:
-      * fd: The file descriptor of plock.
-  - Return:
-      * 0, if the plock file is unlocked by this process.
-      * -1, if error.
-*/
-static int unlock_plock_file(int fd)
-{
-    if (fd <= 0)
-    {
-        return -1;
-    }
-
-    return flock(fd, LOCK_UN);
-}
-
-void HELP()
+#include "proj_config.h"
+#include "fw_update.h"
+#include "util_common.h"
+#include "util_ipmiraw.h"
+#include "util_plock.h"
+
+static void HELP()
 {
     log_print(LOG_NON, "Try: ./host_fw_update <fw_type> <img_path> <log_level>\n");
     log_print(LOG_NON, "     <fw_type>   Firmware type [0]BIC\n");
@@ -623,23 +19,27 @@ void HELP()
     log_print(LOG_NON, "     <log_level> (optional) Log level [-v]L1 [-vv]L2 [-vvv]L3\n\n");
 }
 
-void HEADER_PRINT()
+static int HEADER_PRINT()
 {
+    if ( check_version_info(PROJ_VERSION, PROJ_DATE) )
+        return 1;
     log_print(LOG_NON, "===============================================================================\n");
     log_print(LOG_NON, "* Name         : %s\n", PROJ_NAME);
     log_print(LOG_NON, "* Description  : %s\n", PROJ_DESCRIPTION);
     log_print(LOG_NON, "* Ver/Date     : %s/%s\n", PROJ_VERSION, PROJ_DATE);
     log_print(LOG_NON, "* Note         : %s\n", "none");
     log_print(LOG_NON, "===============================================================================\n");
+    return 0;
 }
 
 int main(int argc, char * const argv[])
 {
     uint8_t *img_buff = NULL;
+    g_log_level = 0;
 
     int plock_fd = -1;
-    if ((plock_fd = init_process_lock_file()) == -1) {
-        log_print(LOG_ERR, "Failed to create %s: %s\n", plock_file_path, strerror(errno));
+    if ((plock_fd = init_process_lock_file(PLOCK_FILE)) == -1) {
+        log_print(LOG_ERR, "Failed to create %s: %s\n", PLOCK_FILE, strerror(errno));
         exit(EXIT_FAILURE);
     }
 
@@ -648,7 +48,8 @@ int main(int argc, char * const argv[])
         exit(EXIT_FAILURE);
     }
 
-    HEADER_PRINT();
+    if ( HEADER_PRINT() )
+        log_print(LOG_WRN, "Skip HEADER due to some reason...\n");
 
     if (argc!=3 && argc!=4) {
         HELP();
@@ -669,11 +70,10 @@ int main(int argc, char * const argv[])
         switch (key)
         {
         case 'v':
-            DEBUG_LOG++;
-            if (DEBUG_LOG > MAX_DBG_LOG) {
-                log_print(LOG_WRN, "Log level over limit!\n");
-                HELP();
-                goto ending;
+            g_log_level++;
+            if (g_log_level > CONFIG_MAX_LOG_LEVEL) {
+                log_print(LOG_WRN, "Log level over limit, use L3 instead!\n");
+                g_log_level = CONFIG_MAX_LOG_LEVEL;
             }
             break;
 
@@ -687,8 +87,8 @@ int main(int argc, char * const argv[])
         }
     }
 
-    if (DEBUG_LOG)
-        log_print(LOG_INF, "Log level %d...\n\n", DEBUG_LOG);
+    if (g_log_level)
+        log_print(LOG_INF, "Log level %d...\n\n", g_log_level);
 
     log_print(LOG_INF, "Start [%s] update task with image [%s]\n", IMG_TYPE_LST[img_idx], img_path);
 
@@ -727,15 +127,15 @@ ending:
         free(img_buff);
 
     if (unlock_plock_file(plock_fd))
-        log_print(LOG_WRN, "Can't unlock %s: %s\n", plock_file_path, strerror(errno));
+        log_print(LOG_WRN, "Can't unlock %s: %s\n", PLOCK_FILE, strerror(errno));
 
     close(plock_fd);
 
-    if (remove(plock_file_path)) {
+    if (remove(PLOCK_FILE)) {
         log_print(LOG_ERR,
         "Can't remove %s: %s\n"
         "Please execute this command: \'rm %s\'\n",
-        plock_file_path, strerror(errno), plock_file_path);
+        PLOCK_FILE, strerror(errno), PLOCK_FILE);
     }
 
     return 0;
