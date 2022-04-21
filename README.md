@@ -22,10 +22,15 @@ make
 #### Step2. Run exe file
 - Command: **./host_update <fw_type> <img_path> <log_level>**
   - *fw_type*: Firmware type\
-               [**0**]BIC [**1**]BIOS [**2**]CPLD
+               [**0**]BIC
   - *img_path*: Image path
   - *log_level*: (optional) Log level\
                [**-v**]L1 [**-vv**]L2 [**-vvv**]L3
 
 ## NOTE
-- BIOS/CPLD update havn't support yet.
+- Version info is in CMakeLists, and it should follow rules and format bellow:\
+  <RELEASE_VERSION> vx.x.x\
+  <RELEASE_DATE>    YYYY.MM.DD\
+  note:\
+      1. 'V' and 'v' are both accept for version\
+      2. '/' and '.' are both accept for date
