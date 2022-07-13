@@ -38,8 +38,8 @@ int g_log_level;
 /* QUANTA oem command relative config */
 #define CONFIG_OEM_38 0x38
 #define CONFIG_OEM_36 0x36
-#define CONFIG_IANA_1 0x9C
-#define CONFIG_IANA_2 0x9C
+#define CONFIG_IANA_1 0x15
+#define CONFIG_IANA_2 0xA0
 #define CONFIG_IANA_3 0x00
 
 #endif

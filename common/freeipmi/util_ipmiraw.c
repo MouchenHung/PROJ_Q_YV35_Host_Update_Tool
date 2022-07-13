@@ -25,28 +25,7 @@ int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg)
         return -1;
     }
 
-    if (g_log_level >= 2) {
-        log_print(LOG_NON, "         * ipmi command     : 0x%x/0x%x\n", msg->netfn, msg->cmd);
-        log_print(LOG_NON, "         * ipmi data length : %d\n", msg->data_len);
-        log_print(LOG_NON, "         * ipmi data        : ");
-
-        int max_data_print = msg->data_len;
-
-        if (g_log_level == 2) {
-            /* IPMI data max print limit is 10 */
-            if (msg->data_len > 10)
-                max_data_print = 10;
-        }
-
-        for (int i=0; i<max_data_print; i++)
-            log_print(LOG_NON, "0x%x ", msg->data[i]);
-        if (g_log_level == 2)
-            log_print(LOG_NON, "...");
-        log_print(LOG_NON, "\n");
-    }
-
     int oem_flag = 0;
-
     if ( (msg->netfn >> 2) == CONFIG_OEM_36 || (msg->netfn >> 2) == CONFIG_OEM_38) {
         ipmi_data_len += 3;
         if (ipmi_data_len > CONFIG_MAX_IPMB_SIZE)
@@ -69,13 +48,34 @@ int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg)
         ipmi_data[3] = CONFIG_IANA_3;
         init_idx += 3;
     }
-    memcpy(&ipmi_data[4], msg->data, msg->data_len);
+    memcpy(&ipmi_data[init_idx], msg->data, msg->data_len);
 
     int rs_len = 0;
     uint8_t *bytes_rs = NULL;
     if (!(bytes_rs = calloc (IPMI_RAW_MAX_ARGS, sizeof (uint8_t)))) {
         log_print(LOG_ERR, "%s: bytes_rs calloc failed!\n", __func__);
         goto ending;
+    }
+
+    if (g_log_level >= 2) {
+        log_print(LOG_NON, "         * ipmi command     : 0x%x/0x%x\n", msg->netfn, ipmi_data[0]);
+        log_print(LOG_NON, "         * ipmi data length : %d\n", ipmi_data_len-1);
+        log_print(LOG_NON, "         * ipmi data        : ");
+
+        int max_data_print = msg->data_len;
+
+        if (g_log_level == 2) {
+            /* IPMI data max print limit is 10 */
+            if (msg->data_len > 10)
+                max_data_print = 10;
+        }
+
+        // print from iana or first data
+        for (int i=1; i<max_data_print; i++)
+            log_print(LOG_NON, "0x%x ", ipmi_data[i]);
+        if (g_log_level == 2)
+            log_print(LOG_NON, "...");
+        log_print(LOG_NON, "\n");
     }
 
     rs_len = ipmi_cmd_raw (
