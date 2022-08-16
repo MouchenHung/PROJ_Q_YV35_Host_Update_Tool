@@ -22,8 +22,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/output)
 #   Note:
 #       1. 'V' and 'v' are both accept for version
 #       2. '/' and '.' are both accept for date
-set(RELEASE_VERSION v1.0.6)
-set(RELEASE_DATE 2022.04.21)
+set(RELEASE_VERSION v1.1.0)
+set(RELEASE_DATE 2022.08.16)
 
 # define macro to include config.h
 add_definitions(-DHAVE_CONFIG_H)
