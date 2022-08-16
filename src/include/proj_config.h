@@ -42,4 +42,11 @@ int g_log_level;
 #define CONFIG_IANA_2 0xA0
 #define CONFIG_IANA_3 0x00
 
+/* Sign image check config */
+#define BIC_SIGN_AREA_SIZE 64 //(byte)
+#define CHECK_PROJ_STAGE 0
+#define CHECK_PLAT_NAME 1
+#define CHECK_BOARD_ID 1
+#define CHECK_FW_COMPONENT 1
+
 #endif

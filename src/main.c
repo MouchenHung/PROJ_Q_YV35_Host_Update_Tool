@@ -13,10 +13,12 @@
 
 static void HELP()
 {
-    log_print(LOG_NON, "Try: ./host_fw_update <fw_type> <img_path> <log_level>\n");
-    log_print(LOG_NON, "     <fw_type>   Firmware type [0]BIC\n");
-    log_print(LOG_NON, "     <img_path>  Image path\n");
-    log_print(LOG_NON, "     <log_level> (optional) Log level [-v]L1 [-vv]L2 [-vvv]L3\n\n");
+    log_print(LOG_NON, "Try: ./host_update -t <fw_type> -i <img_path> [-f] [-v]\n");
+    log_print(LOG_NON, "     -t <fw_type>     Firmware type [0]BIC(default)\n");
+    log_print(LOG_NON, "     -i <img_path>    Image path\n");
+    log_print(LOG_NON, "     -f               (optional) Force update flag [-f]without validate\n");
+    log_print(LOG_NON, "     -v               (optional) Log level [-v]L1 [-vv]L2 [-vvv]L3\n\n");
+    log_print(LOG_NON, "     [ex]: ./host_update -t 0 -i bic_img.bin\n\n");
 }
 
 static int HEADER_PRINT()
@@ -51,34 +53,46 @@ int main(int argc, char * const argv[])
     if ( HEADER_PRINT() )
         log_print(LOG_WRN, "Skip HEADER due to some reason...\n");
 
-    if (argc!=3 && argc!=4) {
-        HELP();
-        goto ending;
-    }
-
-    int img_idx = atoi(argv[1]);
-    char *img_path = argv[2];
-
-    if ( (img_idx >= FW_T_MAX_IDX) || (img_idx < 0) ) {
-        log_print(LOG_ERR, "Invalid <fw_type>!\n");
-        HELP();
-        goto ending;
-    }
+    int img_idx = 0;
+    char *img_path = NULL;
+    char *option_lst[4] = {"-v", "-f", "-t", "-i"};
 
     int key;
-    while ((key = getopt (argc, argv, "v")) != -1) {
+    while ((key = getopt (argc, argv, "vft:i:")) != -1) {
         switch (key)
         {
         case 'v':
             g_log_level++;
-            if (g_log_level > CONFIG_MAX_LOG_LEVEL) {
-                log_print(LOG_WRN, "Log level over limit, use L3 instead!\n");
-                g_log_level = CONFIG_MAX_LOG_LEVEL;
+            break;
+
+        case 'f':
+            force_update_flag = 1;
+            break;
+
+        case 't':
+            for (int i=0; i<4; i++) {
+                if (!strcmp(optarg, option_lst[i])) {
+                    log_print(LOG_ERR, "Lost -t argument!\n");
+                    HELP();
+                    goto ending;
+                }
             }
+            img_idx = atoi(optarg);
+            break;
+
+        case 'i':
+            for (int i=0; i<4; i++) {
+                if (!strcmp(optarg, option_lst[i])) {
+                    log_print(LOG_ERR, "Lost -i argument!\n");
+                    HELP();
+                    goto ending;
+                }
+            }
+            img_path = optarg;
             break;
 
         case '?':
-            log_print(LOG_WRN, "Unknown option `-%c'.\n", optopt);
+            log_print(LOG_ERR, "Unknown option `-%c'.\n", optopt);
             HELP();
             goto ending;
 
@@ -87,11 +101,27 @@ int main(int argc, char * const argv[])
         }
     }
 
+    if ( (img_idx >= FW_T_MAX_IDX) || (img_idx < 0) ) {
+        log_print(LOG_ERR, "Invalid <fw_type>!\n");
+        HELP();
+        goto ending;
+    }
+
+    if (!img_path) {
+        log_print(LOG_ERR, "Lost <img_path>!\n");
+        HELP();
+        goto ending;
+    }
+
+    if (force_update_flag)
+        log_print(LOG_WRN, "Force update without validate sign-key.\n");
+
+    if (g_log_level > CONFIG_MAX_LOG_LEVEL)
+        g_log_level = CONFIG_MAX_LOG_LEVEL;
     if (g_log_level)
         log_print(LOG_INF, "Log level %d...\n\n", g_log_level);
 
     log_print(LOG_INF, "Start [%s] update task with image [%s]\n", IMG_TYPE_LST[img_idx], img_path);
-
     img_buff = malloc(sizeof(uint8_t) * MAX_IMG_LENGTH);
     if (!img_buff) {
         log_print(LOG_ERR, "img_buff malloc failed!\n");

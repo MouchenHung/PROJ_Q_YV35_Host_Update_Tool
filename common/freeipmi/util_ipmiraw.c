@@ -62,7 +62,7 @@ int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg)
         log_print(LOG_NON, "         * ipmi data length : %d\n", ipmi_data_len-1);
         log_print(LOG_NON, "         * ipmi data        : ");
 
-        int max_data_print = msg->data_len;
+        int max_data_print = ipmi_data_len;
 
         if (g_log_level == 2) {
             /* IPMI data max print limit is 10 */
@@ -104,6 +104,11 @@ int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg)
             goto ending;
         }
     }
+
+    /* return back response data */
+    msg->netfn += 1;
+    msg->data_len = rs_len - 4 - 1; //minus command code
+    memcpy(msg->data, &bytes_rs[5], msg->data_len);
 
 ending:
     if (ipmi_data)

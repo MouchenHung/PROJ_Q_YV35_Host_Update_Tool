@@ -8,9 +8,50 @@
 #include "util_common.h"
 #include "util_ipmiraw.h"
 
+#define log_num_to_name(x) #x
+
+extern uint8_t force_update_flag;
+
+typedef struct {
+    uint8_t platform_name[15];
+    uint8_t version[10];
+    uint8_t board_info[3];
+} sign_info_t;
+
+typedef struct {
+    uint8_t component;
+    uint8_t board_id;
+    uint8_t stage;
+} board_info_t;
+
+typedef enum {
+    IMG_COMP_CPLD = 1,
+    IMG_COMP_BIC,
+    IMG_COMP_BIOS,
+    MAX_IMG_COMP,
+} component_t;
+
+typedef enum {
+    STAGE_POC,
+    STAGE_EVT,
+    STAGE_DVT,
+    STAGE_PVT,
+    STAGE_MP,
+    MAX_STAGE,
+} proj_stage_t;
+
+/* for command NetFN:0x38 Cmd:0x0A */
+typedef enum {
+	BIC_PLAT_NAME = 1,
+	BIC_PLAT_BOARD_ID,
+	BIC_PROJ_NAME,
+	BIC_PROJ_STAGE,
+} fw_info_t;
+
 /* Firware update command relative config(using ipmi-raw) */
-#define FW_UPDATE_NETFN 0x38
-#define FW_UPDATE_CMD 0x09
+#define FW_UPDATE_NETFN CONFIG_OEM_38
+#define OEM_CMD_FW_UPDATE 0x09
+#define OEM_CMD_GET_BIC_FW_INFO 0xA
 #define FW_UPDATE_LUN 0x00
 
 #define IPMI_RAW_RETRY 2
