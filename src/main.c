@@ -49,6 +49,8 @@ int main(int argc, char * const argv[])
 
     if (lock_plock_file(plock_fd)) {
         log_print(LOG_ERR, "BIC update tool is processing.\n");
+        if (close_process_lock_file(plock_fd))
+            log_print(LOG_WRN, "Can't close %s: %s\n", CONFIG_PLOCK_FILE, strerror(errno));
         exit(EXIT_FAILURE);
     }
 
@@ -165,9 +167,10 @@ ending:
     if (unlock_plock_file(plock_fd))
         log_print(LOG_WRN, "Can't unlock %s: %s\n", CONFIG_PLOCK_FILE, strerror(errno));
 
-    close(plock_fd);
+    if (close_process_lock_file(plock_fd))
+        log_print(LOG_WRN, "Can't close %s: %s\n", CONFIG_PLOCK_FILE, strerror(errno));
 
-    if (remove(CONFIG_PLOCK_FILE)) {
+    if (remove_process_lock_file(CONFIG_PLOCK_FILE)) {
         log_print(LOG_ERR,
         "Can't remove %s: %s\n"
         "Please execute this command: \'rm %s\'\n",

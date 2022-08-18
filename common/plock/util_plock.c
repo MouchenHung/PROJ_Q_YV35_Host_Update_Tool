@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include "util_plock.h"
 
@@ -18,6 +19,34 @@
 int init_process_lock_file(char *file_path)
 {
     return open(file_path, O_RDONLY | O_CREAT);
+}
+
+/*
+  - Name: remove_process_lock_file
+  - Description: Remove the plock, a file for checking BIC FW updating.
+  - Input:
+      * file_path: Plock file
+  - Return:
+      * 0, if the plock file is removed by this process.
+      * -1, if error
+*/
+int remove_process_lock_file(char *file_path)
+{
+    return remove(file_path);
+}
+
+/*
+  - Name: close_process_lock_file
+  - Description: Close the plock.
+  - Input:
+      * fd: The file descriptor of plock.
+  - Return:
+      * 0, if the plock file is closed by this process.
+      * -1, if error
+*/
+int close_process_lock_file(int fd)
+{
+    return close(fd);
 }
 
 /*

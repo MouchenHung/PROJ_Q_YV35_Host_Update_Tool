@@ -8,6 +8,8 @@
 #include "util_common.h"
 
 int init_process_lock_file(char *file_path);
+int remove_process_lock_file(char *file_path);
+int close_process_lock_file(int fd);
 int lock_plock_file(int fd);
 int unlock_plock_file(int fd);
 
