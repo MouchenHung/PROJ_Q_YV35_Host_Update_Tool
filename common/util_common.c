@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <time.h>
+#include <ctype.h>
 #include "util_common.h"
 
 /*
@@ -251,4 +252,41 @@ uint32_t read_binary(const char *file_path, uint8_t *buff, uint32_t buff_len)
 ending:
     fclose(ptr);
     return bin_size;
+}
+
+/*
+  - Name: str_is_digit
+  - Description: Whether string is a number
+  - Input:
+      * str: string pointer
+  - Return:
+      * 1: is digit
+      * 0: not digit
+*/
+int str_is_digit(char *str)
+{
+    int i=0;
+    while (str[i] != '\0')
+    {
+        if (!isdigit(str[i]))
+            return 0;
+        i++;
+    }
+    return 1;
+}
+
+/*
+  - Name: str_is_key
+  - Description: Whether first char of string is '-'
+  - Input:
+      * str: string pointer
+  - Return:
+      * 1: is key
+      * 0: not key
+*/
+int str_is_key(char *str)
+{
+    if (str[0] == '-')
+        return 1;
+    return 0;
 }

@@ -59,7 +59,6 @@ int main(int argc, char * const argv[])
 
     int img_idx = 0;
     char *img_path = NULL;
-    char *option_lst[5] = {"-h", "-v", "-f", "-t", "-i"};
 
     int key;
     while ((key = getopt (argc, argv, "hvft:i:")) != -1) {
@@ -78,29 +77,29 @@ int main(int argc, char * const argv[])
             break;
 
         case 't':
-            for (int i=0; i<4; i++) {
-                if (!strcmp(optarg, option_lst[i])) {
-                    log_print(LOG_ERR, "Lost -t argument!\n");
-                    HELP();
-                    goto ending;
-                }
+            if (str_is_key(optarg)) {
+                log_print(LOG_ERR, "Lost -t argument!\n");
+                HELP();
+                goto ending;
+            }
+            if (!str_is_digit(optarg)) {
+                log_print(LOG_ERR, "Invalid -t argument!\n");
+                HELP();
+                goto ending;
             }
             img_idx = atoi(optarg);
             break;
 
         case 'i':
-            for (int i=0; i<4; i++) {
-                if (!strcmp(optarg, option_lst[i])) {
-                    log_print(LOG_ERR, "Lost -i argument!\n");
-                    HELP();
-                    goto ending;
-                }
+            if (str_is_key(optarg)) {
+                log_print(LOG_ERR, "Lost -i argument!\n");
+                HELP();
+                goto ending;
             }
             img_path = optarg;
             break;
 
         case '?':
-            log_print(LOG_ERR, "Unknown option `-%c'.\n", optopt);
             HELP();
             goto ending;
 

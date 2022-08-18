@@ -24,5 +24,7 @@ void datetime_get(char *psDateTime, tf_type_t flag);
 void log_record(char *file_path, char *content, int init_flag);
 int check_version_info(char *ver, char *date);
 uint32_t read_binary(const char *file_path, uint8_t *buff, uint32_t buff_len);
+int str_is_digit(char *str);
+int str_is_key(char *str);
 
 #endif
