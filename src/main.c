@@ -13,22 +13,24 @@
 
 static void HELP()
 {
+    log_print(LOG_NON, "\n");
     log_print(LOG_NON, "Try: ./host_update -t <fw_type> -i <img_path> [-f] [-v]\n");
+    log_print(LOG_NON, "     -h               help\n");
     log_print(LOG_NON, "     -t <fw_type>     Firmware type [0]BIC(default)\n");
     log_print(LOG_NON, "     -i <img_path>    Image path\n");
     log_print(LOG_NON, "     -f               (optional) Force update flag [-f]without validate\n");
     log_print(LOG_NON, "     -v               (optional) Log level [-v]L1 [-vv]L2 [-vvv]L3\n\n");
-    log_print(LOG_NON, "     [ex]: ./host_update -t 0 -i bic_img.bin\n\n");
+    log_print(LOG_NON, "     Example: ./host_update -t 0 -i bic_img.bin\n\n");
 }
 
 static int HEADER_PRINT()
 {
-    if ( check_version_info(PROJ_VERSION, PROJ_DATE) )
+    if ( check_version_info(CONFIG_PROJ_VERSION, CONFIG_PROJ_DATE) )
         return 1;
     log_print(LOG_NON, "===============================================================================\n");
-    log_print(LOG_NON, "* Name         : %s\n", PROJ_NAME);
-    log_print(LOG_NON, "* Description  : %s\n", PROJ_DESCRIPTION);
-    log_print(LOG_NON, "* Ver/Date     : %s/%s\n", PROJ_VERSION, PROJ_DATE);
+    log_print(LOG_NON, "* Name         : %s\n", CONFIG_PROJ_NAME);
+    log_print(LOG_NON, "* Description  : %s\n", CONFIG_PROJ_DESCRIPTION);
+    log_print(LOG_NON, "* Ver/Date     : %s/%s\n", CONFIG_PROJ_VERSION, CONFIG_PROJ_DATE);
     log_print(LOG_NON, "* Note         : %s\n", "none");
     log_print(LOG_NON, "===============================================================================\n");
     return 0;
@@ -40,8 +42,8 @@ int main(int argc, char * const argv[])
     g_log_level = 0;
 
     int plock_fd = -1;
-    if ((plock_fd = init_process_lock_file(PLOCK_FILE)) == -1) {
-        log_print(LOG_ERR, "Failed to create %s: %s\n", PLOCK_FILE, strerror(errno));
+    if ((plock_fd = init_process_lock_file(CONFIG_PLOCK_FILE)) == -1) {
+        log_print(LOG_ERR, "Failed to create %s: %s\n", CONFIG_PLOCK_FILE, strerror(errno));
         exit(EXIT_FAILURE);
     }
 
@@ -55,12 +57,16 @@ int main(int argc, char * const argv[])
 
     int img_idx = 0;
     char *img_path = NULL;
-    char *option_lst[4] = {"-v", "-f", "-t", "-i"};
+    char *option_lst[5] = {"-h", "-v", "-f", "-t", "-i"};
 
     int key;
-    while ((key = getopt (argc, argv, "vft:i:")) != -1) {
+    while ((key = getopt (argc, argv, "hvft:i:")) != -1) {
         switch (key)
         {
+        case 'h':
+            HELP();
+            goto ending;
+
         case 'v':
             g_log_level++;
             break;
@@ -122,7 +128,7 @@ int main(int argc, char * const argv[])
         log_print(LOG_INF, "Log level %d...\n\n", g_log_level);
 
     log_print(LOG_INF, "Start [%s] update task with image [%s]\n", IMG_TYPE_LST[img_idx], img_path);
-    img_buff = malloc(sizeof(uint8_t) * MAX_IMG_LENGTH);
+    img_buff = malloc(sizeof(uint8_t) * CONFIG_MAX_IMG_LENGTH);
     if (!img_buff) {
         log_print(LOG_ERR, "img_buff malloc failed!\n");
         goto ending;
@@ -131,7 +137,7 @@ int main(int argc, char * const argv[])
     /* STEP1 - Read image */
     log_print(LOG_NON, "\n");
     log_print(LOG_INF, "STEP1. Read image\n");
-    uint32_t img_size = read_binary(img_path, img_buff, MAX_IMG_LENGTH);
+    uint32_t img_size = read_binary(img_path, img_buff, CONFIG_MAX_IMG_LENGTH);
     if (!img_size) {
         log_print(LOG_NON, "\n");
         log_print(LOG_INF, "Update failed!\n");
@@ -157,15 +163,15 @@ ending:
         free(img_buff);
 
     if (unlock_plock_file(plock_fd))
-        log_print(LOG_WRN, "Can't unlock %s: %s\n", PLOCK_FILE, strerror(errno));
+        log_print(LOG_WRN, "Can't unlock %s: %s\n", CONFIG_PLOCK_FILE, strerror(errno));
 
     close(plock_fd);
 
-    if (remove(PLOCK_FILE)) {
+    if (remove(CONFIG_PLOCK_FILE)) {
         log_print(LOG_ERR,
         "Can't remove %s: %s\n"
         "Please execute this command: \'rm %s\'\n",
-        PLOCK_FILE, strerror(errno), PLOCK_FILE);
+        CONFIG_PLOCK_FILE, strerror(errno), CONFIG_PLOCK_FILE);
     }
 
     return 0;

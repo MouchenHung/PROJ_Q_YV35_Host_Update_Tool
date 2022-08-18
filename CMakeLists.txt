@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(yv35_host_update)
+project(host_update)
 
 MACRO(INCLUDE_SUBDIR targetdir)
 FILE(GLOB files ${targetdir}/*)
@@ -28,8 +28,8 @@ set(RELEASE_DATE 2022.08.16)
 # define macro to include config.h
 add_definitions(-DHAVE_CONFIG_H)
 add_definitions(-D_GNU_SOURCE)
-add_definitions(-DPROJ_VERSION="${RELEASE_VERSION}")
-add_definitions(-DPROJ_DATE="${RELEASE_DATE}")
+add_definitions(-DCONFIG_PROJ_VERSION="${RELEASE_VERSION}")
+add_definitions(-DCONFIG_PROJ_DATE="${RELEASE_DATE}")
 
 # list neccessary code in freeipmi 
 FILE(GLOB_RECURSE freeipmi_sources freeipmi-1.6.9/libfreeipmi/*.c)

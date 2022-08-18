@@ -44,14 +44,14 @@ int img_parsing_and_validate(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_l
         goto exit;
     }
 
-    if (buff_len <= BIC_SIGN_AREA_SIZE) {
-        log_print(LOG_ERR, "%s: given buffer size %d lower than sign area size %d\n", __func__, buff_len, BIC_SIGN_AREA_SIZE);
+    if (buff_len <= CONFIG_BIC_SIGN_AREA_SIZE) {
+        log_print(LOG_ERR, "%s: given buffer size %d lower than sign area size %d\n", __func__, buff_len, CONFIG_BIC_SIGN_AREA_SIZE);
         goto exit;
     }
 
-    uint8_t key_byte[BIC_SIGN_AREA_SIZE];
+    uint8_t key_byte[CONFIG_BIC_SIGN_AREA_SIZE];
 
-    memcpy(&key_byte, &buff[buff_len-BIC_SIGN_AREA_SIZE], BIC_SIGN_AREA_SIZE);
+    memcpy(&key_byte, &buff[buff_len-CONFIG_BIC_SIGN_AREA_SIZE], CONFIG_BIC_SIGN_AREA_SIZE);
     sign_info_t sign_info, tar_sign_info;
     board_info_t img_info, tar_img_info;
 
@@ -90,11 +90,11 @@ int img_parsing_and_validate(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_l
     int resp_cc;
     int validate_fail = 0;
 
-    if (CHECK_FW_COMPONENT) {
+    if (CONFIG_FW_COMPO_CHECK) {
         // TODO
     }
 
-    if (CHECK_PROJ_STAGE) {
+    if (CONFIG_PROJ_STAGE_CHECK) {
         memset(&msg_out, 0, sizeof(msg_out));
         msg_out.netfn = FW_UPDATE_NETFN << 2;
         msg_out.cmd = OEM_CMD_GET_BIC_FW_INFO;
@@ -113,7 +113,7 @@ int img_parsing_and_validate(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_l
         }
     }
 
-    if (CHECK_PLAT_NAME) {
+    if (CONFIG_PLAT_NAME_CHECK) {
         memset(&msg_out, 0, sizeof(msg_out));
         msg_out.netfn = FW_UPDATE_NETFN << 2;
         msg_out.cmd = OEM_CMD_GET_BIC_FW_INFO;
@@ -135,7 +135,7 @@ int img_parsing_and_validate(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_l
         }
     }
 
-    if (CHECK_BOARD_ID) {
+    if (CONFIG_BOARD_ID_CHECK) {
         memset(&msg_out, 0, sizeof(msg_out));
         msg_out.netfn = FW_UPDATE_NETFN << 2;
         msg_out.cmd = OEM_CMD_GET_BIC_FW_INFO;
@@ -221,14 +221,14 @@ int do_bic_update(uint8_t *buff, uint32_t buff_len)
     }
 
     while(cur_msg_offset < buff_len) {
-        if (section_offset == SECTOR_SZ_64K) {
+        if (section_offset == CONFIG_SECTOR_SZ_64K) {
             section_offset = 0;
             section_idx++;
         }
 
         /* If current size over 64K */
-        if ( (section_offset + CONFIG_MAX_IPMB_DATA_SIZE) / SECTOR_SZ_64K )
-            msg_len = (SECTOR_SZ_64K - section_offset);
+        if ( (section_offset + CONFIG_MAX_IPMB_DATA_SIZE) / CONFIG_SECTOR_SZ_64K )
+            msg_len = (CONFIG_SECTOR_SZ_64K - section_offset);
         else
             msg_len = CONFIG_MAX_IPMB_DATA_SIZE;
 
@@ -267,7 +267,7 @@ int do_bic_update(uint8_t *buff, uint32_t buff_len)
 
         if (g_log_level >= 1) {
             log_print(LOG_DBG, "section_idx[%d] section_offset[0x%x/0x%x] image_offset[0x%x]\n",
-                section_idx, section_offset, SECTOR_SZ_64K, cur_msg_offset);
+                section_idx, section_offset, CONFIG_SECTOR_SZ_64K, cur_msg_offset);
             log_print(LOG_NON, "         target[0x%x] offset[0x%x] size[%d]\n",
                 msg_out.data[0],
                 msg_out.data[1]|(msg_out.data[2] << 8)|(msg_out.data[3] << 16)|(msg_out.data[4] << 24),

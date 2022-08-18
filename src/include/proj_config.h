@@ -4,25 +4,25 @@
 /* ===============================================
     PROJECT CONFIGS
    =============================================== */
-#define PROJ_NAME "FW UPDATE TOOL"
-#define PROJ_DESCRIPTION "Firmware update tool from host, including [BIC]."
-#ifndef PROJ_VERSION
-    #define PROJ_VERSION "none"
+#define CONFIG_PROJ_NAME "FW UPDATE TOOL"
+#define CONFIG_PROJ_DESCRIPTION "Firmware update tool from host, including [BIC]."
+#ifndef CONFIG_PROJ_VERSION
+    #define CONFIG_PROJ_VERSION "none"
 #endif
-#ifndef PROJ_DATE
-    #define PROJ_DATE "none"
+#ifndef CONFIG_PROJ_DATE
+    #define CONFIG_PROJ_DATE "none"
 #endif
-#define PROJ_LOG_FILE "./log.txt"
+#define CONFIG_PROJ_LOG_FILE "./log.txt"
 
 /* ===============================================
     OTHER CONFIGS
    =============================================== */
 /* FW update rule config */
-#define MAX_IMG_LENGTH 0x80000
-#define SECTOR_SZ_64K 0x10000
+#define CONFIG_MAX_IMG_LENGTH 0x80000
+#define CONFIG_SECTOR_SZ_64K 0x10000
 
 /* Plock file config */
-#define PLOCK_FILE "/var/run/HOST_FW_updating"
+#define CONFIG_PLOCK_FILE "/var/run/HOST_FW_updating"
 
 /* ===============================================
     GLOBAL CONFIGS AND VARIABLES
@@ -43,10 +43,10 @@ int g_log_level;
 #define CONFIG_IANA_3 0x00
 
 /* Sign image check config */
-#define BIC_SIGN_AREA_SIZE 64 //(byte)
-#define CHECK_PROJ_STAGE 0
-#define CHECK_PLAT_NAME 1
-#define CHECK_BOARD_ID 1
-#define CHECK_FW_COMPONENT 1
+#define CONFIG_BIC_SIGN_AREA_SIZE 64 //(byte)
+#define CONFIG_PROJ_STAGE_CHECK 0
+#define CONFIG_PLAT_NAME_CHECK 1
+#define CONFIG_BOARD_ID_CHECK 1
+#define CONFIG_FW_COMPO_CHECK 1
 
 #endif
