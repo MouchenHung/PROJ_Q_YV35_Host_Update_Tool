@@ -216,6 +216,7 @@ error:
   - Return:
       * Binary file size, if no error
       * 0, if error
+  - Note: buff_len should >= given image length
 */
 uint32_t read_binary(const char *file_path, uint8_t *buff, uint32_t buff_len)
 {
@@ -244,7 +245,12 @@ uint32_t read_binary(const char *file_path, uint8_t *buff, uint32_t buff_len)
         goto ending;
     }
 
-    fread(buff, buff_len, 1, ptr);
+    int read_size = fread(buff, sizeof(char), bin_size, ptr);
+    if (read_size != bin_size) {
+        log_print(LOG_ERR, "%s: There's an error occur while reading image\n", __func__);
+        bin_size = 0;
+        goto ending;
+    }
 
     if (g_log_level >= 1)
         log_print(LOG_INF, "Image size: 0x%x\n", bin_size);
