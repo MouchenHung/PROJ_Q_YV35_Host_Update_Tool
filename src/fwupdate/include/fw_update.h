@@ -49,6 +49,7 @@ typedef enum {
 extern const char *const prj_comp_name[];
 extern const char *const prj_stage_name[];
 extern char *IMG_TYPE_LST[FW_T_MAX_IDX];
+extern uint8_t IANA_LIST[3][IANA_MAX];
 
 int img_parsing_and_validate(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len, fw_type_t dev_type);
 int fw_update(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len, fw_type_t dev_type, int max_retry);

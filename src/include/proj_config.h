@@ -36,11 +36,11 @@ int g_log_level;
 #define CONFIG_MAX_IPMB_DATA_SIZE 224
 
 /* QUANTA oem command relative config */
-#define CONFIG_OEM_38 0x38
 #define CONFIG_OEM_36 0x36
-#define CONFIG_IANA_1 0x15
-#define CONFIG_IANA_2 0xA0
-#define CONFIG_IANA_3 0x00
+#define CONFIG_OEM_38 0x38
+#define CONFIG_IANA_0 0x00A015
+#define CONFIG_IANA_1 0x009C9C
+#define CONFIG_IANA_DEFAULT CONFIG_IANA_0
 
 /* Sign image check config */
 #define CONFIG_BIC_SIGN_AREA_SIZE 64 //(byte)

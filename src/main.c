@@ -16,13 +16,14 @@ static uint8_t force_update_flag;
 static void HELP()
 {
     log_print(LOG_NON, "\n");
-    log_print(LOG_NON, "Try: ./host_update -t <fw_type> -i <img_path> [-f] [-v]\n");
+    log_print(LOG_NON, "Try: ./host_update -i <img_path> [-t <fw_type>] [-I <iana_type>] [-f] [-v]\n");
     log_print(LOG_NON, "     -h               help\n");
     log_print(LOG_NON, "     -t <fw_type>     Firmware type [0]BIC(default)\n");
+    log_print(LOG_NON, "     -I <iana_type>   IANA [0]0x00a015(default) [1]0x009c9c\n");
     log_print(LOG_NON, "     -i <img_path>    Image path\n");
     log_print(LOG_NON, "     -f               (optional) Force update flag [-f]without validate\n");
     log_print(LOG_NON, "     -v               (optional) Log level [-v]L1 [-vv]L2 [-vvv]L3\n\n");
-    log_print(LOG_NON, "     Example: ./host_update -t 0 -i bic_img.bin\n\n");
+    log_print(LOG_NON, "     Example: Update BIC with ./host_update -i bic_img.bin\n\n");
 }
 
 static int HEADER_PRINT()
@@ -61,10 +62,11 @@ int main(int argc, char * const argv[])
         log_print(LOG_WRN, "Skip HEADER due to some reason...\n");
 
     int img_idx = 0;
+    int iana_idx = 0;
     char *img_path = NULL;
 
     int key;
-    while ((key = getopt (argc, argv, "hvft:i:")) != -1) {
+    while ((key = getopt (argc, argv, "hvft:i:I:")) != -1) {
         switch (key)
         {
         case 'h':
@@ -102,6 +104,20 @@ int main(int argc, char * const argv[])
             img_path = optarg;
             break;
 
+        case 'I':
+            if (str_is_key(optarg)) {
+                log_print(LOG_ERR, "Lost -I argument!\n");
+                HELP();
+                goto ending;
+            }
+            if (!str_is_digit(optarg)) {
+                log_print(LOG_ERR, "Invalid -I argument!\n");
+                HELP();
+                goto ending;
+            }
+            iana_idx = atoi(optarg);
+            break;
+
         case '?':
             HELP();
             goto ending;
@@ -113,6 +129,12 @@ int main(int argc, char * const argv[])
 
     if ( (img_idx >= FW_T_MAX_IDX) || (img_idx < 0) ) {
         log_print(LOG_ERR, "Invalid <fw_type>!\n");
+        HELP();
+        goto ending;
+    }
+
+    if (switch_global_iana(iana_idx)) {
+        log_print(LOG_ERR, "Invalid <iana_type>!\n");
         HELP();
         goto ending;
     }

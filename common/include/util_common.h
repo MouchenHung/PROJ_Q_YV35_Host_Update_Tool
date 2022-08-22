@@ -5,6 +5,7 @@
 #include "proj_config.h"
 
 #define log_num_to_name(x) #x
+#define BYTE(x, i) ((x >> (i*8)) & 0xFF)
 
 typedef enum {
     LOG_INF = 0x01,

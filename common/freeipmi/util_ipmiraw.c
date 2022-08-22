@@ -5,6 +5,40 @@
 #include <string.h>
 #include "util_freeipmi.h"
 
+uint8_t iana_lst[IANA_MAX][3] = { // LS byte first
+    {BYTE(CONFIG_IANA_0, 0), BYTE(CONFIG_IANA_0, 1), BYTE(CONFIG_IANA_0, 2)}, // 15,A0,00
+    {BYTE(CONFIG_IANA_1, 0), BYTE(CONFIG_IANA_1, 1), BYTE(CONFIG_IANA_1, 2)}, // 9C,9C,00
+};
+
+uint8_t GLOBAL_IANA[3] = { // LS byte first
+    BYTE(CONFIG_IANA_DEFAULT, 0),
+    BYTE(CONFIG_IANA_DEFAULT, 1),
+    BYTE(CONFIG_IANA_DEFAULT, 2)
+};
+
+/*
+  - Name: switch_global_iana
+  - Description: Switch global iana for oem command
+  - Input:
+      * idx: Type index of iana list
+  - Return:
+      * 0, if no error
+      * 1, if error
+*/
+int switch_global_iana(iana_type_t idx)
+{
+    if (idx < 0 || idx >= IANA_MAX) {
+        log_print(LOG_ERR, "%s: Invalid iana type index\n", __func__);
+        return 1;
+    }
+
+    GLOBAL_IANA[0] = iana_lst[idx][0];
+    GLOBAL_IANA[1] = iana_lst[idx][1];
+    GLOBAL_IANA[2] = iana_lst[idx][2];
+
+    return 0;
+}
+
 /*
   - Name: send_recv_command
   - Description: Send and receive message of ipmi-raw
@@ -14,7 +48,7 @@
   - Return:
       * Completion code, if no error
       * -1, if error
-  - Note: Support OEM command 0x38 with auto-fill IANA
+  - Note: Support OEM command 0x38 with auto-fill default IANA
 */
 int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg)
 {
@@ -44,9 +78,7 @@ int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg)
     ipmi_data[0] = msg->cmd; // The byte #0 is cmd.
     init_idx++;
     if (oem_flag) {
-        ipmi_data[1] = CONFIG_IANA_1;
-        ipmi_data[2] = CONFIG_IANA_2;
-        ipmi_data[3] = CONFIG_IANA_3;
+        memcpy(&ipmi_data[1], GLOBAL_IANA, sizeof(GLOBAL_IANA));
         init_idx += 3;
     }
     memcpy(&ipmi_data[init_idx], msg->data, msg->data_len);
@@ -93,13 +125,17 @@ int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg)
 
     /* Check for ipmi-raw command response */
     if (bytes_rs[0] != msg->cmd || bytes_rs[1] != CC_SUCCESS) {
-        log_print(LOG_ERR, "%s: ipmi-raw received bad cc 0x%x\n", __func__, bytes_rs[1]);
+        if (bytes_rs[1] == CC_INVALID_IANA)
+            log_print(LOG_WRN, "%s: Given IANA 0x%x%x%x not mach, please check it from target device.\n",
+                __func__, GLOBAL_IANA[2], GLOBAL_IANA[1], GLOBAL_IANA[0]);
+        else
+            log_print(LOG_ERR, "%s: ipmi-raw received bad cc 0x%x\n", __func__, bytes_rs[1]);
         goto ending;
     }
 
     /* Check for oem iana */
     if (oem_flag) {
-        if (bytes_rs[2]!=CONFIG_IANA_1 || bytes_rs[3]!=CONFIG_IANA_2 || bytes_rs[4]!=CONFIG_IANA_3) {
+        if (bytes_rs[2]!=GLOBAL_IANA[0] || bytes_rs[3]!=GLOBAL_IANA[1] || bytes_rs[4]!=GLOBAL_IANA[2]) {
             log_print(LOG_ERR, "%s: ipmi-raw received invalid IANA\n", __func__);
             ret = -1;
             goto ending;

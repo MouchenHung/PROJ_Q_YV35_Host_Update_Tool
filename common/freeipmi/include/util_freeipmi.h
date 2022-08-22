@@ -34,6 +34,12 @@ enum {
     CC_UNSPECIFIED_ERROR = 0xFF,
 };
 
+typedef enum {
+    IANA_15A000 = 0,
+    IANA_9C9C00,
+    IANA_MAX
+} iana_type_t;
+
 typedef struct fw_update_data {
     uint8_t target;
     uint8_t offset[4];
@@ -48,8 +54,11 @@ typedef struct ipmi_cmd {
     uint32_t data_len;
 } ipmi_cmd_t;
 
+extern uint8_t GLOBAL_IANA[3];
+
 ipmi_ctx_t freeipmi_session_create();
 int freeipmi_session_abort(ipmi_ctx_t ipmi_ctx);
+int switch_global_iana(iana_type_t idx);
 int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg);
 
 #endif

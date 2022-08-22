@@ -74,12 +74,12 @@ int check_bic_info(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len)
         msg_out.data[0] = BIC_PROJ_STAGE;
         resp_cc = send_recv_command(ipmi_ctx, &msg_out);
         if (resp_cc) {
-            log_print(LOG_ERR, "Can't get firmware info %d from target device!\n", BIC_PROJ_STAGE);
+            log_print(LOG_ERR, "Can't get PROJECT STAGE from target device!\n", BIC_PROJ_STAGE);
             goto exit;
         }
 
         if (msg_out.data[0] != img_info.board_info.fields.board_stage) {
-            log_print(LOG_ERR, "Fw info stage not mach!\n");
+            log_print(LOG_ERR, "Fw info PROJECT STAGE not mach!\n");
             validate_fail = 1;
         }
     }
@@ -92,13 +92,13 @@ int check_bic_info(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len)
         msg_out.data[0] = BIC_PLAT_NAME;
         resp_cc = send_recv_command(ipmi_ctx, &msg_out);
         if (resp_cc) {
-            log_print(LOG_ERR, "Can't get firmware info %d from target device!\n", BIC_PLAT_NAME);
+            log_print(LOG_ERR, "Can't get PLATFORM NAME from target device!\n");
             goto exit;
         }
 
         for (int i=0; i<msg_out.data_len; i++) {
             if (msg_out.data[i] != img_info.platform_name[i]) {
-                log_print(LOG_ERR, "Fw info platform name not mach!\n");
+                log_print(LOG_ERR, "Fw info PLATFORM NAME not mach!\n");
                 validate_fail = 1;
                 break;
             }
@@ -113,12 +113,12 @@ int check_bic_info(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len)
         msg_out.data[0] = BIC_PLAT_BOARD_ID;
         resp_cc = send_recv_command(ipmi_ctx, &msg_out);
         if (resp_cc) {
-            log_print(LOG_ERR, "Can't get firmware info %d from target device!\n", BIC_PLAT_BOARD_ID);
+            log_print(LOG_ERR, "Can't get BOARD ID from target device!\n", BIC_PLAT_BOARD_ID);
             goto exit;
         }
 
         if (msg_out.data[0] != img_info.board_info.fields.board_id) {
-            log_print(LOG_ERR, "Fw info board id not mach!\n");
+            log_print(LOG_ERR, "Fw info BOARD ID not mach!\n");
             validate_fail = 1;
         }
     }
