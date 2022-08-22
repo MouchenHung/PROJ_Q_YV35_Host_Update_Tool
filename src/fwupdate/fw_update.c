@@ -26,7 +26,7 @@ const char *const prj_stage_name[] = {
   - Name: img_parsing_and_validate
   - Description: Parsing image sign key and validate image which should mach with target device
   - Input:
-      * ipmi_ctx: ipmi-raw session
+      * ipmi_ctx: Pointer to save ipmi-raw session
       * buff: Buffer to store image bytes
       * buff_len: Buffer length
       * dev_type: Target device type
@@ -36,19 +36,17 @@ const char *const prj_stage_name[] = {
 */
 int img_parsing_and_validate(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len, fw_type_t dev_type)
 {
-    int ret = 1;
-
     if (!buff || !ipmi_ctx) {
         log_print(LOG_ERR, "%s: Empty space for buff/ipmi_ctx\n", __func__);
-        goto exit;
+        return 1;
     }
 
+    int ret = 1;
     switch (dev_type)
     {
     case FW_T_BIC:
-        if (check_bic_info(ipmi_ctx, buff, buff_len) == 0) {
+        if (check_bic_info(ipmi_ctx, buff, buff_len) == 0)
             ret = 0;
-        }
         break;
 
     default:
@@ -56,7 +54,6 @@ int img_parsing_and_validate(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_l
         break;
     }
 
-exit:
     return ret;
 }
 
@@ -64,7 +61,7 @@ exit:
   - Name: fw_update
   - Description: Firmware update controller
   - Input:
-      * ipmi_ctx: ipmi-raw session
+      * ipmi_ctx: Pointer to save ipmi-raw session
       * buff: Buffer to store image bytes
       * buff_len: Buffer length
       * dev_type: Target device type
@@ -75,14 +72,13 @@ exit:
 */
 int fw_update(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len, fw_type_t dev_type, int max_retry)
 {
-    if (!buff) {
-        log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
+    if (!buff || !ipmi_ctx) {
+        log_print(LOG_ERR, "%s: Empty space for buff/ipmi_ctx\n", __func__);
         return 1;
     }
 
     int ret = 1;
     int retry = 0;
-
     while (retry <= max_retry) {
         if (retry) {
             log_print(LOG_NON, "\n");

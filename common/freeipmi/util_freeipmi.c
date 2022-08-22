@@ -12,8 +12,8 @@
   - Input:
       * none
   - Return:
-      * Pointer of free-ipmi session, if no error
-      * 0, if error
+      * Pointer to store free-ipmi session, if no error
+      * NULL, if error
 */
 ipmi_ctx_t freeipmi_session_create()
 {
@@ -54,7 +54,7 @@ clean:
 int freeipmi_session_abort(ipmi_ctx_t ipmi_ctx)
 {
     if (!ipmi_ctx) {
-        log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
+        log_print(LOG_ERR, "%s: Empty space for ipmi_ctx\n", __func__);
         return 1;
     }
 

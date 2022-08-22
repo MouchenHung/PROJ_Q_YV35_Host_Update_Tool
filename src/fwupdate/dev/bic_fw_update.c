@@ -4,22 +4,21 @@
 #include <stdarg.h>
 #include "dev_fw_update.h"
 
-uint8_t force_update_flag = 0;
-
 /*
   - Name: check_bic_info
-  - Description: Validate bic target device info with given info
+  - Description: Validate BIC target device info with given image info
   - Input:
-      * ipmi_ctx: ipmi-raw session
-      * board_info_t: Pointer to store board info
+      * ipmi_ctx: Pointer to save ipmi-raw session
+      * buff: Buffer to store image bytes
+      * buff_len: Buffer length
   - Return:
       * 0, if no error
       * 1, if error
 */
 int check_bic_info(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len)
 {
-    if (!ipmi_ctx) {
-        log_print(LOG_ERR, "%s: Empty space for ipmi_ctx\n", __func__);
+    if (!buff || !ipmi_ctx) {
+        log_print(LOG_ERR, "%s: Empty space for buff/ipmi_ctx\n", __func__);
         return 1;
     }
 
@@ -29,7 +28,6 @@ int check_bic_info(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len)
     }
 
     uint8_t key_byte[CONFIG_BIC_SIGN_AREA_SIZE];
-
     memcpy(&key_byte, &buff[buff_len-CONFIG_BIC_SIGN_AREA_SIZE], CONFIG_BIC_SIGN_AREA_SIZE);
 
     board_info_t img_info;
@@ -135,7 +133,7 @@ exit:
   - Name: do_bic_update
   - Description: BIC update process
   - Input:
-      * ipmi_ctx: pointer to save ipmi-raw session
+      * ipmi_ctx: Pointer to save ipmi-raw session
       * buff: Buffer to store image bytes
       * buff_len: Buffer length
   - Return:
@@ -145,7 +143,7 @@ exit:
 int do_bic_update(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len)
 {
     if (!buff || !ipmi_ctx) {
-        log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
+        log_print(LOG_ERR, "%s: Empty space for buff/ipmi_ctx\n", __func__);
         return 1;
     }
 

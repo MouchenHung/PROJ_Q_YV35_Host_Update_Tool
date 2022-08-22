@@ -11,6 +11,8 @@
 #include "util_freeipmi.h"
 #include "util_plock.h"
 
+static uint8_t force_update_flag;
+
 static void HELP()
 {
     log_print(LOG_NON, "\n");

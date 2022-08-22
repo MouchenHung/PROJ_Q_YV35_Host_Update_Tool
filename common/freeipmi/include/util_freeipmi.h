@@ -7,13 +7,9 @@
 #include "proj_config.h"
 #include "util_common.h"
 
-/*
-    IPMI 2.0 Payload is 2 bytes, so we'll assume that size * 2 for good measure.
-    This is from the ipmi-raw head file.
-*/
-#define IPMI_RAW_MAX_ARGS (65536*2)
+#define IPMI_RAW_MAX_ARGS 512
 
-/* IPMI CC(from yv3.5) */
+/* IPMI CC */
 enum {
     CC_SUCCESS = 0x00,
     CC_INVALID_PARAM = 0x80,

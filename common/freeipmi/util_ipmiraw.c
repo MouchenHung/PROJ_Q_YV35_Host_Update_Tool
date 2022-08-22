@@ -3,14 +3,13 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
-#include <time.h>
 #include "util_freeipmi.h"
 
 /*
   - Name: send_recv_command
   - Description: Send and receive message of ipmi-raw
   - Input:
-      * ipmi_ctx: ipmi-raw session
+      * ipmi_ctx: Pointer to save ipmi-raw session
       * msg: IPMI package
   - Return:
       * Completion code, if no error

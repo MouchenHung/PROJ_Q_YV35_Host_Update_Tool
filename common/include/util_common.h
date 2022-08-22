@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "proj_config.h"
 
+#define log_num_to_name(x) #x
+
 typedef enum {
     LOG_INF = 0x01,
     LOG_DBG = 0x02,
