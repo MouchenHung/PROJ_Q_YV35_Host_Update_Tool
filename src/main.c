@@ -8,7 +8,7 @@
 #include "proj_config.h"
 #include "fw_update.h"
 #include "util_common.h"
-#include "util_ipmiraw.h"
+#include "util_freeipmi.h"
 #include "util_plock.h"
 
 static void HELP()
@@ -38,6 +38,7 @@ static int HEADER_PRINT()
 
 int main(int argc, char * const argv[])
 {
+    ipmi_ctx_t ipmi_ctx = NULL;
     uint8_t *img_buff = NULL;
     g_log_level = 0;
 
@@ -146,10 +147,34 @@ int main(int argc, char * const argv[])
     }
     log_print(LOG_INF, "PASS!\n");
 
-    /* STEP2 - Upload image */
+    /* STEP2 - Create session */
     log_print(LOG_NON, "\n");
-    log_print(LOG_INF, "STEP2. Upload image\n");
-    if ( fw_update(img_idx, img_buff, img_size, IPMI_RAW_RETRY) ) {
+    log_print(LOG_INF, "STEP2. Create free-ipmi session\n");
+    ipmi_ctx = freeipmi_session_create(ipmi_ctx);
+    if (!ipmi_ctx) {
+        log_print(LOG_ERR, "There's an error while Creating free ipmi-session!\n");
+        goto ending;
+    }
+    log_print(LOG_INF, "PASS!\n");
+
+    /* STEP3 - Verify image */
+    log_print(LOG_NON, "\n");
+    log_print(LOG_INF, "STEP3. Verify image\n");
+    if (!force_update_flag) {
+        if ( img_parsing_and_validate(ipmi_ctx, img_buff, img_size, img_idx) ) {
+            log_print(LOG_NON, "\n");
+            log_print(LOG_INF, "Update failed!\n");
+            goto ending;
+        }
+        log_print(LOG_INF, "PASS!\n");
+    } else {
+        log_print(LOG_INF, "skip!\n");
+    }
+
+    /* STEP4 - Upload image */
+    log_print(LOG_NON, "\n");
+    log_print(LOG_INF, "STEP4. Upload image\n");
+    if ( fw_update(ipmi_ctx, img_buff, img_size, img_idx, IPMI_RAW_RETRY) ) {
         log_print(LOG_NON, "\n");
         log_print(LOG_INF, "Update failed!\n");
         goto ending;
@@ -162,6 +187,11 @@ int main(int argc, char * const argv[])
 ending:
     if (img_buff)
         free(img_buff);
+
+    if (ipmi_ctx) {
+        if (freeipmi_session_abort(ipmi_ctx))
+            log_print(LOG_ERR, "Can't abort free-ipmi session\n");
+    }
 
     if (unlock_plock_file(plock_fd))
         log_print(LOG_WRN, "Can't unlock %s: %s\n", CONFIG_PLOCK_FILE, strerror(errno));

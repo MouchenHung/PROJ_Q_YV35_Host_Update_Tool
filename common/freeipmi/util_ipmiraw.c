@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <time.h>
-#include "util_ipmiraw.h"
+#include "util_freeipmi.h"
 
 /*
   - Name: send_recv_command
@@ -15,18 +15,20 @@
   - Return:
       * Completion code, if no error
       * -1, if error
+  - Note: Support OEM command 0x38 with auto-fill IANA
 */
 int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg)
 {
-    int ret = -1;
-    int ipmi_data_len = msg->data_len;
     if (!ipmi_ctx || !msg) {
         log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
         return -1;
     }
 
+    int ret = -1;
+    int ipmi_data_len = msg->data_len;
+
     int oem_flag = 0;
-    if ( (msg->netfn >> 2) == CONFIG_OEM_36 || (msg->netfn >> 2) == CONFIG_OEM_38) {
+    if ((msg->netfn >> 2) == CONFIG_OEM_38) {
         ipmi_data_len += 3;
         if (ipmi_data_len > CONFIG_MAX_IPMB_SIZE)
             return -1;

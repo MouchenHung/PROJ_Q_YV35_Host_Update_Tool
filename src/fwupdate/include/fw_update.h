@@ -6,22 +6,29 @@
 #include <string.h>
 #include "proj_config.h"
 #include "util_common.h"
-#include "util_ipmiraw.h"
+#include "util_freeipmi.h"
+#include "dev_fw_update.h"
 
 #define log_num_to_name(x) #x
 
 extern uint8_t force_update_flag;
 
-typedef struct {
-    uint8_t platform_name[15];
-    uint8_t version[10];
-    uint8_t board_info[3];
-} sign_info_t;
+extern const char *const prj_comp_name[];
+extern const char *const prj_stage_name[];
 
-typedef struct {
-    uint8_t component;
-    uint8_t board_id;
-    uint8_t stage;
+typedef struct __attribute__((packed)) {
+    uint8_t platform_name[16];
+    uint8_t version[13];
+    union {
+		uint8_t value[3];
+        struct __attribute__((packed)) {
+            uint8_t board_id : 5;
+            uint8_t board_stage : 3;
+            uint8_t comp_id : 3;
+            uint16_t inst : 12;
+			uint8_t rsv : 1;
+		} fields;
+	} board_info;
 } board_info_t;
 
 typedef enum {
@@ -63,7 +70,7 @@ typedef enum fw_type {
 
 char *IMG_TYPE_LST[FW_T_MAX_IDX];
 
-int do_bic_update(uint8_t *buff, uint32_t buff_len);
-int fw_update(fw_type_t flag, uint8_t *buff, uint32_t buff_len, int max_retry);
+int img_parsing_and_validate(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len, fw_type_t dev_type);
+int fw_update(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len, fw_type_t dev_type, int max_retry);
 
 #endif

@@ -43,6 +43,7 @@ set(common_path common)
 FILE(GLOB app_sources
     ${source_path}/*.c
     ${source_path}/fwupdate/*.c
+    ${source_path}/fwupdate/dev/*.c
 )
 FILE(GLOB common_sources
     ${common_path}/*.c
@@ -65,6 +66,7 @@ include_directories(freeipmi-1.6.9 include)
 include_directories(
     ${source_path}/include
     ${source_path}/fwupdate/include
+    ${source_path}/fwupdate/dev/include
     ${common_path}/include
     ${common_path}/freeipmi/include
     ${common_path}/plock/include

@@ -1,5 +1,5 @@
-#ifndef UTIL_IPMIRAW_H
-#define UTIL_IPMIRAW_H
+#ifndef UTIL_FREEIPMI_H
+#define UTIL_FREEIPMI_H
 
 #include <freeipmi/api/ipmi-api.h>
 #include <freeipmi/driver/ipmi-openipmi-driver.h>
@@ -52,6 +52,8 @@ typedef struct ipmi_cmd {
     uint32_t data_len;
 } ipmi_cmd_t;
 
+ipmi_ctx_t freeipmi_session_create();
+int freeipmi_session_abort(ipmi_ctx_t ipmi_ctx);
 int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg);
 
 #endif
