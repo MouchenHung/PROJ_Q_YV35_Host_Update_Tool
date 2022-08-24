@@ -52,10 +52,8 @@ int switch_global_iana(iana_type_t idx)
 */
 int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg)
 {
-    if (!ipmi_ctx || !msg) {
-        log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
-        return -1;
-    }
+    PARM_CHECK(ipmi_ctx, -1, __func__)
+    PARM_CHECK(msg, -1, __func__)
 
     int ret = -1;
     int ipmi_data_len = msg->data_len;
@@ -91,24 +89,26 @@ int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg)
     }
 
     if (g_log_level >= 2) {
-        log_print(LOG_NON, "         * ipmi command     : 0x%x/0x%x\n", msg->netfn, ipmi_data[0]);
+        log_print(LOG_NON, "         ipmi-raw:\n");
+        log_print(LOG_NON, "         * ipmi command     : 0x%x/0x%x/0x%x\n", msg->netfn>>2, msg->netfn & 0x03, ipmi_data[0]);
         log_print(LOG_NON, "         * ipmi data length : %d\n", ipmi_data_len-1);
         log_print(LOG_NON, "         * ipmi data        : ");
 
         int max_data_print = ipmi_data_len;
 
         if (g_log_level == 2) {
-            /* IPMI data max print limit is 10 */
-            if (msg->data_len > 10)
-                max_data_print = 10;
+            if (msg->data_len > CONFIG_MAX_DATA_DBG_PRINT)
+                max_data_print = CONFIG_MAX_DATA_DBG_PRINT;
         }
 
         // print from iana or first data
         for (int i=1; i<max_data_print; i++)
             log_print(LOG_NON, "0x%x ", ipmi_data[i]);
-        if (g_log_level == 2)
-            log_print(LOG_NON, "...");
-        log_print(LOG_NON, "\n");
+        if (g_log_level == 2) {
+            if (msg->data_len > CONFIG_MAX_DATA_DBG_PRINT)
+                log_print(LOG_NON, "...");
+        }
+        log_print(LOG_NON, "\n\n");
     }
 
     rs_len = ipmi_cmd_raw (
@@ -125,8 +125,11 @@ int send_recv_command(ipmi_ctx_t ipmi_ctx, ipmi_cmd_t *msg)
 
     /* Check for ipmi-raw command response */
     if (bytes_rs[0] != msg->cmd || bytes_rs[1] != CC_SUCCESS) {
-        if (bytes_rs[1] == CC_INVALID_IANA)
-            log_print(LOG_WRN, "%s: Given IANA 0x%x%x%x not mach, please check it from target device.\n",
+        if (bytes_rs[1] == CC_INVALID_CMD)
+            log_print(LOG_WRN, "%s: Target device not support command NetFn: 0x%x Cmd: 0x%x\n",
+                __func__, msg->netfn >> 2, msg->cmd);
+        else if (bytes_rs[1] == CC_INVALID_IANA)
+            log_print(LOG_WRN, "%s: Target device IANA not mach with given IANA 0x%x%x%x\n",
                 __func__, GLOBAL_IANA[2], GLOBAL_IANA[1], GLOBAL_IANA[0]);
         else
             log_print(LOG_ERR, "%s: ipmi-raw received bad cc 0x%x\n", __func__, bytes_rs[1]);

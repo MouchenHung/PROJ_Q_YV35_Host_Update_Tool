@@ -31,6 +31,9 @@
 #define CONFIG_MAX_LOG_LEVEL 3
 int g_log_level;
 
+/* ipmi-raw config */
+#define CONFIG_MAX_DATA_DBG_PRINT 10 //how much ipmi data bytes could display if using -vvv
+
 /* IPMB relative config */
 #define CONFIG_MAX_IPMB_SIZE 244
 #define CONFIG_MAX_IPMB_DATA_SIZE 224

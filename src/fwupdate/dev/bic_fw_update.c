@@ -17,10 +17,8 @@
 */
 int check_bic_info(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len)
 {
-    if (!buff || !ipmi_ctx) {
-        log_print(LOG_ERR, "%s: Empty space for buff/ipmi_ctx\n", __func__);
-        return 1;
-    }
+    PARM_CHECK(ipmi_ctx, 1, __func__)
+    PARM_CHECK(buff, 1, __func__)
 
     if (buff_len <= CONFIG_BIC_SIGN_AREA_SIZE) {
         log_print(LOG_ERR, "%s: given buffer size %d lower than sign area size %d\n", __func__, buff_len, CONFIG_BIC_SIGN_AREA_SIZE);
@@ -54,7 +52,7 @@ int check_bic_info(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len)
             log_print(LOG_NON, "         * board stage    : unknown %d\n", img_info.board_info.fields.board_stage);
         else
             log_print(LOG_NON, "         * board stage    : %s\n", prj_stage_name[img_info.board_info.fields.board_stage]);
-        log_print(LOG_NON, "         ------------- fw info ------------\n");
+        log_print(LOG_NON, "         ------------- fw info ------------\n\n");
     }
 
     ipmi_cmd_t msg_out;
@@ -142,10 +140,8 @@ exit:
 */
 int do_bic_update(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len)
 {
-    if (!buff || !ipmi_ctx) {
-        log_print(LOG_ERR, "%s: Empty space for buff/ipmi_ctx\n", __func__);
-        return 1;
-    }
+    PARM_CHECK(ipmi_ctx, 1, __func__)
+    PARM_CHECK(buff, 1, __func__)
 
     uint32_t cur_msg_offset = 0;
     uint8_t *cur_buff = buff;

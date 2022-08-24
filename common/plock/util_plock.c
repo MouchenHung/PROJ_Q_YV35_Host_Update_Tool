@@ -18,6 +18,7 @@
 */
 int init_process_lock_file(char *file_path)
 {
+    PARM_CHECK(file_path, -1, __func__)
     return open(file_path, O_RDONLY | O_CREAT);
 }
 
@@ -32,6 +33,7 @@ int init_process_lock_file(char *file_path)
 */
 int remove_process_lock_file(char *file_path)
 {
+    PARM_CHECK(file_path, -1, __func__)
     return remove(file_path);
 }
 

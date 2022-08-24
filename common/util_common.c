@@ -18,8 +18,7 @@
 */
 void log_print(LOG_TAG level, const char *va_alist, ...)
 {
-    if (!va_alist)
-        return;
+    PARM_CHECK(va_alist, , __func__)
 
     va_list ap;
     switch (level)
@@ -59,10 +58,7 @@ void log_print(LOG_TAG level, const char *va_alist, ...)
 */
 void datetime_get(char *psDateTime, tf_type_t flag)
 {
-    if (!psDateTime) {
-        log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
-        return;
-    }
+    PARM_CHECK(psDateTime, , __func__)
 
     time_t nSeconds;
     struct tm *pTM = NULL;
@@ -108,10 +104,8 @@ void datetime_get(char *psDateTime, tf_type_t flag)
 */
 void log_record(char *file_path, char *content, int init_flag)
 {
-    if (!file_path || !content) {
-        log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
-        return;
-    }
+    PARM_CHECK(file_path, , __func__)
+    PARM_CHECK(content, , __func__)
 
     uint32_t content_size = 0;
     char *tmp = content;
@@ -165,10 +159,8 @@ void log_record(char *file_path, char *content, int init_flag)
         * '/' and '.' are both accept for date
 */
 int check_version_info(char *ver, char *date) {
-    if (!ver || !date) {
-        log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
-        return 1;
-    }
+    PARM_CHECK(ver, 1, __func__)
+    PARM_CHECK(date, 1, __func__)
 
     int i = 0;
     while (ver[i]!='\0') {
@@ -220,10 +212,8 @@ error:
 */
 uint32_t read_binary(const char *file_path, uint8_t *buff, uint32_t buff_len)
 {
-    if (!buff || !file_path) {
-        log_print(LOG_ERR, "%s: Get empty inputs!\n", __func__);
-        return 0;
-    }
+    PARM_CHECK(file_path, 0, __func__)
+    PARM_CHECK(buff, 0, __func__)
 
     FILE *ptr;
     uint32_t bin_size = 0;
@@ -271,6 +261,8 @@ ending:
 */
 int str_is_digit(char *str)
 {
+    PARM_CHECK(str, 0, __func__)
+
     int i=0;
     while (str[i] != '\0')
     {
@@ -292,6 +284,8 @@ int str_is_digit(char *str)
 */
 int str_is_key(char *str)
 {
+    PARM_CHECK(str, 0, __func__)
+
     if (str[0] == '-')
         return 1;
     return 0;

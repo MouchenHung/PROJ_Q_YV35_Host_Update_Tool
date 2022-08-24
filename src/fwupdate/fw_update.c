@@ -36,10 +36,8 @@ const char *const prj_stage_name[] = {
 */
 int img_parsing_and_validate(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len, fw_type_t dev_type)
 {
-    if (!buff || !ipmi_ctx) {
-        log_print(LOG_ERR, "%s: Empty space for buff/ipmi_ctx\n", __func__);
-        return 1;
-    }
+    PARM_CHECK(ipmi_ctx, 1, __func__)
+    PARM_CHECK(buff, 1, __func__)
 
     int ret = 1;
     switch (dev_type)
@@ -72,10 +70,8 @@ int img_parsing_and_validate(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_l
 */
 int fw_update(ipmi_ctx_t ipmi_ctx, uint8_t *buff, uint32_t buff_len, fw_type_t dev_type, int max_retry)
 {
-    if (!buff || !ipmi_ctx) {
-        log_print(LOG_ERR, "%s: Empty space for buff/ipmi_ctx\n", __func__);
-        return 1;
-    }
+    PARM_CHECK(ipmi_ctx, 1, __func__)
+    PARM_CHECK(buff, 1, __func__)
 
     int ret = 1;
     int retry = 0;

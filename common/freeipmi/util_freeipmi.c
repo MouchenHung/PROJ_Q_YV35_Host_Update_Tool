@@ -53,10 +53,7 @@ clean:
 */
 int freeipmi_session_abort(ipmi_ctx_t ipmi_ctx)
 {
-    if (!ipmi_ctx) {
-        log_print(LOG_ERR, "%s: Empty space for ipmi_ctx\n", __func__);
-        return 1;
-    }
+    PARM_CHECK(ipmi_ctx, 1, __func__)
 
     ipmi_ctx_close (ipmi_ctx);
     ipmi_ctx_destroy (ipmi_ctx);

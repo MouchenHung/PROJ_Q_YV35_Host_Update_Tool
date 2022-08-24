@@ -17,7 +17,7 @@ static void HELP()
 {
     log_print(LOG_NON, "\n");
     log_print(LOG_NON, "Try: ./host_update -i <img_path> [-t <fw_type>] [-I <iana_type>] [-f] [-v]\n");
-    log_print(LOG_NON, "     -h               help\n");
+    log_print(LOG_NON, "     -h               Help\n");
     log_print(LOG_NON, "     -t <fw_type>     Firmware type [0]BIC(default)\n");
     log_print(LOG_NON, "     -I <iana_type>   IANA [0]0x00a015(default) [1]0x009c9c\n");
     log_print(LOG_NON, "     -i <img_path>    Image path\n");

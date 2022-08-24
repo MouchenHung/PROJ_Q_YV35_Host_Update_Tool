@@ -30,4 +30,10 @@ uint32_t read_binary(const char *file_path, uint8_t *buff, uint32_t buff_len);
 int str_is_digit(char *str);
 int str_is_key(char *str);
 
+#define PARM_CHECK(arg_ptr, ret_val, func)    \
+	if (arg_ptr == NULL) {                                                             \
+		log_print(LOG_ERR, "%s: Parameter '%s' passed in as NULL", func, #arg_ptr);    \
+		return ret_val;                                                                \
+	}
+
 #endif
