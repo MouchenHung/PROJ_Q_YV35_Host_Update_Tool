@@ -16,6 +16,8 @@ Firware update from host by Freeipmi(ipmi-raw).
 - 1.0.6 --> 1.1.0
   - Add sign-image update which is default update mode. But still support original update mode with '-f'.
   - Modify command format with fully keywords cover including -t/-i/-f/-v.
+- 1.1.0 --> 1.1.1
+  - Add IANA switch option with key '-I'.
 
 ## FEATURE
 - Muti-process circumstance prevent is supported
@@ -33,10 +35,13 @@ make
 ## USAGE
 #### Step1. Move exe file to host
 #### Step2. Run exe file
-- Command: **./host_update -t <fw_type> -i <img_path> [-f] [-v]**
-  - *-f*: Firmware type\
-               [**0**]BIC
+- Command: **./host_update -i <img_path> [-t <fw_type>] [-I <iana_type>] [-f] [-v]**
+  - *-h*: Help
   - *-i*: Image path
+  - *-t*: (optional) Firmware type\
+               [**0**]BIC(default)
+  - *-I*: (optional) IANA type\
+               [**0**]0x00a015(default) [**1**]0x009c9c
   - *-f*: (optional) Force update
   - *-v*: (optional) Log level\
                [**-v**]L1 [**-vv**]L2 [**-vvv**]L3
