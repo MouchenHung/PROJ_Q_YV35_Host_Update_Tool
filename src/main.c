@@ -12,6 +12,7 @@
 #include "util_plock.h"
 
 static uint8_t force_update_flag;
+int g_log_level = 0;
 
 static void HELP()
 {

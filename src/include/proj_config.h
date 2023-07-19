@@ -29,7 +29,7 @@
    =============================================== */
 /* Log config */
 #define CONFIG_MAX_LOG_LEVEL 3
-int g_log_level;
+extern int g_log_level;
 
 /* ipmi-raw config */
 #define CONFIG_MAX_DATA_DBG_PRINT 10 //how much ipmi data bytes could display if using -vvv
